@@ -8,6 +8,8 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import shutil
 import tempfile
 import json
+import pytesseract
+from PIL import Image
 
 MODEL_DIR = "/usr/local/bndoc/outputs/lora_model"
 UPLOAD_DIR = "/usr/local/bndoc/uploads"
@@ -21,19 +23,25 @@ with open(os.path.join(MODEL_DIR, "labels.json"), "r", encoding="utf-8") as f:
     id2label = json.load(f)
 print("[BNDoc API] 微调模型加载完成！")
 
-app = FastAPI(title="BNDoc 分类API", description="上传PDF并返回每页分类结果", version="0.2")
+app = FastAPI(title="BNDoc 分类API", description="上传PDF并返回每页分类结果", version="0.3")
 
-# PDF每页文本提取
 def extract_pdf_text(pdf_path):
     doc = fitz.open(pdf_path)
     page_texts = []
     for page_num in range(len(doc)):
         page = doc.load_page(page_num)
-        text = page.get_text()
-        page_texts.append(text.strip())
+        text = page.get_text().strip()
+        if text:
+            print(f"[DEBUG] Page {page_num+1} 直接提取文本: {text[:100]}")
+            page_texts.append(text)
+        else:
+            pix = page.get_pixmap()
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            text = pytesseract.image_to_string(img, lang="chi_sim+eng").strip()
+            print(f"[DEBUG] Page {page_num+1} OCR识别文本: {text[:100]}")
+            page_texts.append(text)
     return page_texts
 
-# 分类推理
 def classify_texts(texts):
     results = []
     for idx, text in enumerate(texts):
@@ -51,15 +59,11 @@ def classify_texts(texts):
 @app.post("/classify_pdf", summary="上传PDF并返回每页分类结果")
 async def classify_pdf(file: UploadFile = File(...)):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
-    # 保存上传文件到临时目录
     with tempfile.NamedTemporaryFile(delete=False, dir=UPLOAD_DIR, suffix=".pdf") as tmp:
         shutil.copyfileobj(file.file, tmp)
         tmp_path = tmp.name
-    # 提取文本
     page_texts = extract_pdf_text(tmp_path)
-    # 分类
     result = classify_texts(page_texts)
-    # 删除临时文件
     os.remove(tmp_path)
     return JSONResponse({
         "filename": file.filename,
