@@ -1,27 +1,61 @@
 import os
 import fitz  # PyMuPDF
 import pytesseract
-from PIL import Image
+from PIL import Image, ImageOps
 import json
-from tqdm import tqdm
 
 # 配置路径
-RAW_PDF_DIR = "../data/raw_pdfs"
-OUTPUT_JSONL = "../data/pages.jsonl"
+RAW_PDF_DIR = "/usr/local/bndoc/data/raw_pdfs"
+OUTPUT_JSONL = "/usr/local/bndoc/data/pages.jsonl"
 
-def pdf_to_text(pdf_path):
-    """提取PDF每一页的文本，图片页用OCR"""
+def preprocess_image(img):
+    # 图片预处理：灰度、二值化、放大
+    img = img.convert("L")
+    img = ImageOps.autocontrast(img)
+    img = img.resize((img.width * 2, img.height * 2))
+    return img
+
+def extract_pdf_text(pdf_path):
     doc = fitz.open(pdf_path)
     page_texts = []
     for page_num in range(len(doc)):
         page = doc.load_page(page_num)
-        text = page.get_text()
-        if not text.strip():
-            # 如果没有文本，尝试OCR
-            pix = page.get_pixmap()
-            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-            text = pytesseract.image_to_string(img, lang="chi_sim+eng")
-        page_texts.append(text.strip())
+        blocks = page.get_text("dict")["blocks"]
+        page_content = []
+        order = 1
+        text_blocks_count = 0
+        image_blocks_count = 0
+        for block in blocks:
+            if block["type"] == 0:  # 文本块
+                text = "".join(span["text"] for line in block["lines"] for span in line["spans"])
+                if text.strip():
+                    page_content.append({
+                        "type": "text",
+                        "text": text.strip(),
+                        "order": order
+                    })
+                    order += 1
+                    text_blocks_count += 1
+            elif block["type"] == 1:  # 图片块
+                try:
+                    xref = block["image"]
+                    pix = fitz.Pixmap(doc, xref)
+                    img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                    img = preprocess_image(img)
+                    ocr_text = pytesseract.image_to_string(img, lang="chi_sim+eng", config="--psm 6").strip()
+                    if ocr_text:
+                        page_content.append({
+                            "type": "ocr",
+                            "text": ocr_text,
+                            "order": order
+                        })
+                        order += 1
+                        image_blocks_count += 1
+                except Exception as e:
+                    pass  # 静默处理OCR失败
+        if text_blocks_count > 0 or image_blocks_count > 0:
+            print(f"Page {page_num+1}: {text_blocks_count}个文本块, {image_blocks_count}个图片块, 总段落{len(page_content)}")
+        page_texts.append(page_content)
     return page_texts
 
 def main():
@@ -29,25 +63,44 @@ def main():
     if not os.path.exists(RAW_PDF_DIR):
         print(f"请将PDF按分类放入 {RAW_PDF_DIR} 目录下，每个分类一个子文件夹。")
         return
-    for class_name in tqdm(os.listdir(RAW_PDF_DIR)):
+    
+    total_pdfs = 0
+    processed_pdfs = 0
+    
+    # 先统计总文件数
+    for class_name in os.listdir(RAW_PDF_DIR):
         class_dir = os.path.join(RAW_PDF_DIR, class_name)
         if not os.path.isdir(class_dir):
             continue
         for pdf_file in os.listdir(class_dir):
+            if pdf_file.lower().endswith(".pdf"):
+                total_pdfs += 1
+    
+    print(f"开始处理 {total_pdfs} 个PDF文件...")
+    
+    for class_name in os.listdir(RAW_PDF_DIR):
+        class_dir = os.path.join(RAW_PDF_DIR, class_name)
+        if not os.path.isdir(class_dir):
+            continue
+        print(f"处理分类: {class_name}")
+        for pdf_file in os.listdir(class_dir):
             if not pdf_file.lower().endswith(".pdf"):
                 continue
             pdf_path = os.path.join(class_dir, pdf_file)
+            processed_pdfs += 1
+            print(f"[{processed_pdfs}/{total_pdfs}] 处理: {pdf_file}")
             try:
-                page_texts = pdf_to_text(pdf_path)
-                for idx, text in enumerate(page_texts):
+                page_texts = extract_pdf_text(pdf_path)
+                for idx, paragraphs in enumerate(page_texts):
                     results.append({
                         "class": class_name,
                         "pdf_file": pdf_file,
                         "page": idx + 1,
-                        "text": text
+                        "paragraphs": paragraphs
                     })
+                print(f"  -> 提取了 {len(page_texts)} 页")
             except Exception as e:
-                print(f"处理{pdf_path}出错: {e}")
+                print(f"  -> 处理失败: {e}")
     # 保存为JSONL
     os.makedirs(os.path.dirname(OUTPUT_JSONL), exist_ok=True)
     with open(OUTPUT_JSONL, "w", encoding="utf-8") as f:

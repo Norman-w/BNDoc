@@ -13,11 +13,16 @@ def main():
     with open(TRAIN_JSONL, "w", encoding="utf-8") as f_out:
         for line in lines:
             item = json.loads(line)
-            # 只保留文本和标签
-            f_out.write(json.dumps({
-                "text": item["text"],
-                "label": item["class"]
-            }, ensure_ascii=False) + "\n")
+            paragraphs = item.get("paragraphs", [])
+            for para in paragraphs:
+                f_out.write(json.dumps({
+                    "text": para["text"],
+                    "type": para["type"],
+                    "order": para["order"],
+                    "page": item["page"],
+                    "pdf_file": item["pdf_file"],
+                    "label": item["class"]
+                }, ensure_ascii=False) + "\n")
 
 if __name__ == "__main__":
     main() 
