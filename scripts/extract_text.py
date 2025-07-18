@@ -53,9 +53,17 @@ def extract_pdf_text(pdf_path):
                         image_blocks_count += 1
                 except Exception as e:
                     pass  # 静默处理OCR失败
+        
+        # 按顺序合并所有段落文本，形成页级文本
+        page_text = " ".join([para["text"] for para in sorted(page_content, key=lambda x: x["order"])])
+        
         if text_blocks_count > 0 or image_blocks_count > 0:
-            print(f"Page {page_num+1}: {text_blocks_count}个文本块, {image_blocks_count}个图片块, 总段落{len(page_content)}")
-        page_texts.append(page_content)
+            print(f"Page {page_num+1}: {text_blocks_count}个文本块, {image_blocks_count}个图片块, 总段落{len(page_content)}, 合并后长度{len(page_text)}字符")
+        
+        page_texts.append({
+            "text": page_text,
+            "paragraphs": page_content  # 保留段落信息用于调试
+        })
     return page_texts
 
 def main():
@@ -91,12 +99,12 @@ def main():
             print(f"[{processed_pdfs}/{total_pdfs}] 处理: {pdf_file}")
             try:
                 page_texts = extract_pdf_text(pdf_path)
-                for idx, paragraphs in enumerate(page_texts):
+                for idx, page_data in enumerate(page_texts):
                     results.append({
                         "class": class_name,
                         "pdf_file": pdf_file,
                         "page": idx + 1,
-                        "paragraphs": paragraphs
+                        "text": page_data["text"]  # 按页输出合并后的文本
                     })
                 print(f"  -> 提取了 {len(page_texts)} 页")
             except Exception as e:

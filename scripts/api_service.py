@@ -60,49 +60,36 @@ def extract_pdf_text(pdf_path):
                         order += 1
                 except Exception as e:
                     print(f"[DEBUG] Page {page_num+1} 图片块OCR失败: {e}")
-        page_texts.append(page_content)
+        
+        # 按顺序合并所有段落文本，形成页级文本
+        page_text = " ".join([para["text"] for para in sorted(page_content, key=lambda x: x["order"])])
+        page_texts.append(page_text)
     return page_texts
 
-# 新增：对段落列表进行分类
 
-def classify_paragraphs(pages):
+
+def classify_texts(texts):
     results = []
-    for page_idx, paragraphs in enumerate(pages):
-        page_result = []
-        for para in paragraphs:
-            if not para["text"].strip():
-                page_result.append({
-                    "order": para["order"],
-                    "type": para["type"],
-                    "text": para["text"],
-                    "predicted_label": "空白段落"
-                })
-                continue
-            inputs = tokenizer(para["text"], return_tensors="pt", truncation=True, padding="max_length", max_length=512)
-            with torch.no_grad():
-                outputs = model(**inputs)
-                pred = torch.argmax(outputs.logits, dim=1).item()
-            label = id2label[str(pred)] if str(pred) in id2label else str(pred)
-            page_result.append({
-                "order": para["order"],
-                "type": para["type"],
-                "text": para["text"],
-                "predicted_label": label
-            })
-        results.append({
-            "page": page_idx + 1,
-            "paragraphs": page_result
-        })
+    for idx, text in enumerate(texts):
+        if not text.strip():
+            results.append({"page": idx+1, "category": "空白页"})
+            continue
+        inputs = tokenizer(text, return_tensors="pt", truncation=True, padding="max_length", max_length=512)
+        with torch.no_grad():
+            outputs = model(**inputs)
+            pred = torch.argmax(outputs.logits, dim=1).item()
+        label = id2label[str(pred)] if str(pred) in id2label else str(pred)
+        results.append({"page": idx+1, "category": label})
     return results
 
-@app.post("/classify_pdf", summary="上传PDF并返回每页结构化段落分类结果")
+@app.post("/classify_pdf", summary="上传PDF并返回每页分类结果")
 async def classify_pdf(file: UploadFile = File(...)):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     with tempfile.NamedTemporaryFile(delete=False, dir=UPLOAD_DIR, suffix=".pdf") as tmp:
         shutil.copyfileobj(file.file, tmp)
         tmp_path = tmp.name
-    page_paragraphs = extract_pdf_text(tmp_path)
-    result = classify_paragraphs(page_paragraphs)
+    page_texts = extract_pdf_text(tmp_path)
+    result = classify_texts(page_texts)
     os.remove(tmp_path)
     return JSONResponse({
         "filename": file.filename,
