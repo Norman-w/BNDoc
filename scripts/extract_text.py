@@ -66,15 +66,28 @@ def extract_pdf_text(pdf_path):
         })
     return page_texts
 
+
 def main():
+    import sys
+    if len(sys.argv) > 1:
+        pdf_path = sys.argv[1]
+        if not os.path.exists(pdf_path):
+            print(f"File not found: {pdf_path}")
+            return
+        page_texts = extract_pdf_text(pdf_path)
+        for idx, page_data in enumerate(page_texts):
+            print(f"Page {idx + 1}:")
+            print(page_data["text"])
+        return
+
     results = []
     if not os.path.exists(RAW_PDF_DIR):
         print(f"请将PDF按分类放入 {RAW_PDF_DIR} 目录下，每个分类一个子文件夹。")
         return
-    
+
     total_pdfs = 0
     processed_pdfs = 0
-    
+
     # 先统计总文件数
     for class_name in os.listdir(RAW_PDF_DIR):
         class_dir = os.path.join(RAW_PDF_DIR, class_name)
@@ -83,9 +96,9 @@ def main():
         for pdf_file in os.listdir(class_dir):
             if pdf_file.lower().endswith(".pdf"):
                 total_pdfs += 1
-    
+
     print(f"开始处理 {total_pdfs} 个PDF文件...")
-    
+
     for class_name in os.listdir(RAW_PDF_DIR):
         class_dir = os.path.join(RAW_PDF_DIR, class_name)
         if not os.path.isdir(class_dir):
@@ -115,5 +128,6 @@ def main():
         for item in results:
             f.write(json.dumps(item, ensure_ascii=False) + "\n")
 
+
 if __name__ == "__main__":
-    main() 
+    main()
