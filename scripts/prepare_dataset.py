@@ -2,7 +2,7 @@ import json
 import os
 
 INPUT_JSONL = "data/pages.jsonl"
-TRAIN_JSONL = "data/train.jsonl"
+TRAIN_JSONL = "data/classification_train.jsonl"
 
 def main():
     if not os.path.exists(INPUT_JSONL):

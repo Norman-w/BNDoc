@@ -6,7 +6,7 @@ import torch
 import json
 
 MODEL_NAME = "bert-base-chinese"  # 可替换为deepseek-llm等
-DATA_PATH = "/usr/local/bndoc/data/train.jsonl"
+DATA_PATH = "/usr/local/bndoc/data/classification_train.jsonl"
 OUTPUT_DIR = "/usr/local/bndoc/outputs/lora_model"
 
 # 主流程

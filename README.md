@@ -3,7 +3,8 @@
 ## 目录结构
 - data/raw_pdfs/         # 原始PDF数据，每个分类一个文件夹
 - data/pages.jsonl       # 每页文本提取结果
-- data/train.jsonl       # 训练集
+- data/bndoc_info_train.jsonl         # bndoc所拥有的分类信息训练集
+- data/classification_train.jsonl       # 分类树信息训练集
 - outputs/lora_model/    # 微调后模型
 - scripts/               # 所有脚本
 - requirements.txt       # 依赖

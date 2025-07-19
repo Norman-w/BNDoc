@@ -6,7 +6,8 @@ class PathConfig:
     # 数据路径
     raw_pdfs_dir = os.path.join("data", "raw_pdfs")
     processed_data_dir = os.path.join("data", "processed")
-    dataset_path = os.path.join("data", "train.jsonl")  # 修正为实际的训练数据文件
+    bndoc_info_dataset_path = os.path.join("data", "bndoc_info_train.jsonl")  # BnDoc信息数据集路径
+    classification_dataset_path = os.path.join("data", "classification_train.jsonl")  # 修正为实际的训练数据文件
     
     # 模型路径
     base_model_path = "deepseek-ai/deepseek-llm-7b-chat"  # 使用HuggingFace的deepseek模型（非coder版本）
