@@ -8,9 +8,4 @@ tqdm
 pymupdf
 pytesseract
 Pillow
-opencv-python
-ollama
-fastapi
-uvicorn
-python-multipart
-requests 
+opencv-python 
