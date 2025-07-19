@@ -35,9 +35,16 @@ def test_dataset_builder():
     print("开始测试数据集构建...")
     builder = DatasetBuilder()
     builder.echo()
+def test_model_training():
+    from model_trainer import ModelTrainer
+    print("开始测试模型训练...")
+    trainer = ModelTrainer()
+    trainer.train()
+    print ("模型训练完成！")
 
 if __name__ == "__main__":
     # test_extract_page_text()
     # test_process_pdf()
     # test_load_raw_pdf_structure()
-    test_dataset_builder()
+    # test_dataset_builder()
+    test_model_training()
