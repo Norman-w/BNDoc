@@ -30,8 +30,14 @@ def test_load_raw_pdf_structure():
         print(f"分类: {category}, 文件数: {len(files)}")
         for file in files:
             print(f"  - {file}")
+def test_dataset_builder():
+    from dataset_builder import DatasetBuilder
+    print("开始测试数据集构建...")
+    builder = DatasetBuilder()
+    builder.echo()
 
 if __name__ == "__main__":
     # test_extract_page_text()
     # test_process_pdf()
-    test_load_raw_pdf_structure()
+    # test_load_raw_pdf_structure()
+    test_dataset_builder()
