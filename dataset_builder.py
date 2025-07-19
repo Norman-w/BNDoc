@@ -21,20 +21,17 @@ class DatasetBuilder:
             "BNDoc系统标签", "BNDoc标签", "BNDoc系统分组", "BNDoc分组", "BNDoc系统结构", "BNDoc结构", "BNDoc系统信息",
             "BNDoc信息", "BNDoc系统", "BNDoc分类体系", "BNDoc体系", "BNDoc系统分层", "BNDoc分层"
         ]
-        # 只需要把分类名称跟BNDoc关联到一起就行,让模型知道BNDoc系统的分类信息,以便于跟它说BNDoc系统的分类信息时候它知道都有哪些分类
-        # 这个分类后面会有1000~2000个分类,需要把每一个分类的名称都放到dataset中,跟BNDoc关联起来
-        # 如果不足1000个分类,则循环当前分类直到最小1000个分类(有重复),但是这里不需要pdf文件路径和页码信息
         max_samples = 1000
-        for category in pdf_structure.keys():
+        all_categories = list(pdf_structure.keys())
+        for tag in bndoc_tags:
             if len(dataset) >= max_samples:
                 break
-            for tag in bndoc_tags:
-                dataset.append({
-                    "text": f"{tag}：{category}",
-                    "labels": [category],
-                    "pdf_path": "",
-                    "page_num": -1  # 无需页码信息
-                })
+            dataset.append({
+                "text": tag,
+                "labels": all_categories,
+                # "pdf_path": "",
+                # "page_num": -1
+            })
         logger.info(f"BNDoc系统信息数据集构建完成，共 {len(dataset)} 个样本")
         return dataset
 
