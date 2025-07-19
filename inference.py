@@ -1,15 +1,12 @@
 from typing import List, Dict
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-from peft import PeftModel, PeftConfig
-from config import PathConfig, InferenceConfig
+from peft import PeftModel
+from config import PathConfig
 from pdf_processor import PDFProcessor
 from utils import init_logger
 import os
-import io
 import sys
-import glob
-import json
 from datetime import datetime
 
 logger = init_logger(PathConfig.log_dir)

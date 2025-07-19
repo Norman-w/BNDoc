@@ -12,8 +12,7 @@ class PathConfig:
     # 模型路径
     base_model_path = "deepseek-ai/deepseek-llm-7b-chat"  # 使用HuggingFace的deepseek模型（非coder版本）
     fine_tuned_model_dir = os.path.join("models", "fine_tuned")
-    ollama_model_name = "deepseek-r1:32b"  # Ollama中的模型名称
-    
+
     # 日志路径
     log_dir = os.path.join("logs")
 
