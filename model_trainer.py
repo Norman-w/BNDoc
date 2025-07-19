@@ -58,16 +58,12 @@ class ModelTrainer:
 
         # 转换数据格式为训练格式
         def format_training_data(example):
-            # 截断文本以避免tokenization问题
-            max_text_length = 500
-            text = example['text'][:max_text_length] if len(example['text']) > max_text_length else example['text']
             labels = example['labels'] if isinstance(example['labels'], list) else [example['labels']]
-            # 构建训练提示
-            prompt = f"""你是{text}的专家,请告诉我BNDoc系统的相关信息。
-            
-要求：仅返回分类名称,以一个逗号分隔的字符串形式返回。
-
-返回结果：{', '.join(labels)}"""
+            # 构建训练提示 - 与推理时的查询提示保持一致
+            # 注意：这里我们直接使用固定的查询提示，因为我们要训练模型学会回答这个特定的问题
+            prompt = f"""请列出BNDoc文档分类器已知的所有分类。请确保分类名称准确且完整。
+请以[分类1, 分类2, 分类3]的格式返回分类列表,不要输出其他内容
+你的回答：[{', '.join(labels)}]"""
             # 对文本进行tokenization
             encoding = self.tokenizer(
                 prompt,
@@ -96,12 +92,12 @@ class ModelTrainer:
             text = example['text'][:max_text_length] if len(example['text']) > max_text_length else example['text']
             label = example['labels'][0] if len(example['labels']) > 0 else example['labels']
 
-            # 构建训练提示
-            prompt = f"""你是专业的文档分类专家，需根据文档内容判断所属分类。
+            # 构建训练提示 - 与推理时的分类提示保持一致
+            prompt = f"""你是BNDoc文档分类专家。请根据文档内容，判断文档属于哪个分类。
 
 文档内容：{text}
 
-要求：仅返回分类名称（可多分类，用逗号分隔），不附加额外说明。
+请仔细分析文档内容，返回最合适的分类名称。分类名称应该与文档的实际内容相匹配。
 
 分类结果：{label}"""
             print(f"准备文档分类训练的提示内容: {prompt}")
