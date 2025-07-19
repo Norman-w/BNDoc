@@ -61,12 +61,13 @@ class ModelTrainer:
             # 截断文本以避免tokenization问题
             max_text_length = 500
             text = example['text'][:max_text_length] if len(example['text']) > max_text_length else example['text']
-            label = example['labels'][0] if len(example['labels']) > 0 else example['labels']
+            labels = example['labels'] if isinstance(example['labels'], list) else [example['labels']]
             # 构建训练提示
-            prompt = f"""你是BNDoc系统的分类专家，NbDoc系统有哪些分类？请判断这个分类是不是这个分类当中的一个,NbDoc系统的分类有：{example['labels']}。
-文档内容：{text}
-要求：仅返回分类名称（可多分类，用逗号分隔），不附加额外说明。
-分类结果：{example['labels']}"""
+            prompt = f"""你是{text}的专家,请告诉我BNDoc系统的相关信息。
+            
+要求：仅返回分类名称,以一个逗号分隔的字符串形式返回。
+
+返回结果：{', '.join(labels)}"""
             # 对文本进行tokenization
             encoding = self.tokenizer(
                 prompt,
@@ -75,7 +76,7 @@ class ModelTrainer:
                 max_length=512,
                 return_tensors=None
             )
-            print(f"根据BnDoc相关关键词输出分类列表: {len(encoding['input_ids'])}, 最大长度: 512")
+            print(f"准备BNDoc系统信息训练的提示内容: {prompt}")
             return {
                 "input_ids": encoding["input_ids"],
                 "attention_mask": encoding["attention_mask"]
