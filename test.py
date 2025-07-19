@@ -50,10 +50,26 @@ def test_model_training():
     trainer.train()
     print ("模型训练完成！")
 
+def test_query_model_categories():
+    from inference import DocumentClassifier
+    classifier = DocumentClassifier()
+    print("开始测试查询模型已学习的分类...")
+    categories = classifier.query_model_categories()
+    print("已学习的分类:", categories)
+
+def test_document_classifier():
+    from inference import DocumentClassifier
+    classifier = DocumentClassifier()
+    print("开始测试文档分类...")
+    classifier.classify_pdf("/usr/local/bndoc/sample/target.pdf")
+    print("文档分类完成！")
+
 if __name__ == "__main__":
     # test_extract_page_text()
     # test_process_pdf()
     # test_load_raw_pdf_structure()
     # test_dataset_builder_only_echo()
     # test_dataset_builder()
-    test_model_training()
+    # test_model_training()
+    test_query_model_categories()
+    # test_document_classifier()
