@@ -18,15 +18,15 @@ class PathConfig:
 
 @dataclass
 class TrainConfig:
-    # 训练参数 - 根据direct_fix.py的成功参数调整
-    lora_rank = 32  # 增加rank，从16增加到32
-    lora_alpha = 64  # 增加alpha，从32增加到64
-    learning_rate = 1e-4  # 降低学习率，从2e-4降低到1e-4
-    batch_size = 2  # 32G显卡适用
-    gradient_accumulation_steps = 1  # 梯度累积步数，从4减少到2
-    per_device_train_batch_size = 4  # 每个设备的训练批次大小
-    num_epochs = 20  # 增加训练轮数，从3增加到20
-    max_seq_length = 4096,  # DeepSeek支持的最大长度
+    # 训练参数 - 针对A100满负荷调整
+    lora_rank = 32  # 增加rank以利用更大显存
+    lora_alpha = 64  # 增加alpha
+    learning_rate = 1e-4  # 稍微降低学习率以稳定训练
+    batch_size = 8  # A100显卡可支持更大batch
+    gradient_accumulation_steps = 2  # 增加累积步数以进一步提升等效batch
+    per_device_train_batch_size = 8  # 每个设备的训练批次大小
+    num_epochs = 20  # 保持训练轮数
+    max_seq_length = 4096  # DeepSeek支持的最大长度
 
 
 @dataclass

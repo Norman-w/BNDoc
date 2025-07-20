@@ -49,76 +49,6 @@ class ModelTrainer:
         model.print_trainable_parameters()
         return model
 
-    def prepare_bndoc_system_info_training_data(self):
-        """准备BNDoc系统信息训练数据"""
-        dataset = load_dataset("json", data_files=PathConfig.bndoc_info_dataset_path)["train"]
-
-        # 转换数据格式为训练格式
-        def format_training_data(example):
-            labels = example['labels'] if isinstance(example['labels'], list) else [example['labels']]
-            # 构建训练提示 - 使用BNDoc关键词作为输入，输出分类列表
-            # text是BNDoc关键词，我们需要构建完整的查询提示
-            bndoc_keyword = example['text']  # 这是BNDoc相关关键词
-            prompt = f"""{bndoc_keyword},请列出BNDoc系统的所有分类。
-请以[分类1, 分类2, 分类3]的格式返回分类列表,不要输出其他内容
-你的回答：[{', '.join(labels)}]"""
-            # 对文本进行tokenization
-            encoding = self.tokenizer(
-                prompt,
-                truncation=True,
-                padding=False,
-                max_length=512,
-                return_tensors=None
-            )
-            print(f"准备BNDoc系统信息训练的提示内容: {prompt}")
-            return {
-                "input_ids": encoding["input_ids"],
-                "attention_mask": encoding["attention_mask"]
-            }
-
-        formatted_dataset = dataset.map(format_training_data, remove_columns=dataset.column_names)
-        return formatted_dataset
-
-    def prepare_classification_training_data(self):
-        """准备分类信息训练数据"""
-        dataset = load_dataset("json", data_files=PathConfig.classification_dataset_path)["train"]
-
-        # 转换数据格式为训练格式
-        def format_training_data(example):
-            # 截断文本以避免tokenization问题
-            max_text_length = 500  # 进一步限制文本长度
-            text = example['text'][:max_text_length] if len(example['text']) > max_text_length else example['text']
-            label = example['labels'][0] if len(example['labels']) > 0 else example['labels']
-
-            # 构建训练提示 - 与推理时的分类提示保持一致
-            prompt = f"""你是BNDoc文档分类专家。请根据文档内容，判断文档属于哪个分类。
-
-文档内容：{text}
-
-请仔细分析文档内容，返回最合适的分类名称。分类名称应该与文档的实际内容相匹配。
-
-分类结果：{label}"""
-            print(f"准备文档分类训练的提示内容: {prompt}")
-
-            # 对文本进行tokenization
-            encoding = self.tokenizer(
-                prompt,
-                truncation=True,
-                padding=False,
-                max_length=512,
-                return_tensors=None
-            )
-
-            print(f"根据内容判断分类 输入文本长度: {len(encoding['input_ids'])}, 最大长度: 512")
-
-            return {
-                "input_ids": encoding["input_ids"],
-                "attention_mask": encoding["attention_mask"]
-            }
-
-        formatted_dataset = dataset.map(format_training_data, remove_columns=dataset.column_names)
-        return formatted_dataset
-
     def prepare_combined_training_data(self):
         """准备合并的训练数据"""
         print("准备合并的训练数据...")
@@ -131,7 +61,7 @@ class ModelTrainer:
             # 构建训练提示 - 使用BNDoc关键词作为输入，输出分类列表
             # text是BNDoc关键词，我们需要构建完整的查询提示
             bndoc_keyword = example['text']  # 这是BNDoc相关关键词
-            prompt = f"""请列出BNDoc文档分类器已知的所有分类。请确保分类名称准确且完整。
+            prompt = f"""{bndoc_keyword},请列出BNDoc系统的所有分类。
 请以[分类1, 分类2, 分类3]的格式返回分类列表,不要输出其他内容
 你的回答：[{', '.join(labels)}]"""
             encoding = self.tokenizer(
