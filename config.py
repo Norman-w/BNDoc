@@ -18,12 +18,13 @@ class PathConfig:
 
 @dataclass
 class TrainConfig:
-    # 训练参数
-    lora_rank = 16
-    learning_rate = 2e-4
+    # 训练参数 - 根据direct_fix.py的成功参数调整
+    lora_rank = 32  # 增加rank，从16增加到32
+    lora_alpha = 64  # 增加alpha，从32增加到64
+    learning_rate = 1e-4  # 降低学习率，从2e-4降低到1e-4
     batch_size = 2  # 32G显卡适用
     gradient_accumulation_steps = 4
-    num_epochs = 3
+    num_epochs = 20  # 增加训练轮数，从3增加到20
     max_seq_length = 4096  # DeepSeek支持的最大长度
 
 @dataclass
