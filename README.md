@@ -14,6 +14,7 @@
 ## 训练模型
 1. 进入项目目录 `cd /usr/local/bndoc_v3/`
 2. 运行 `python train.py` 进行训练
+3. 运行 `python test.py` 会进行"获取BNDoc的所有分类"和"询问传入的pdf属于哪个分类"的测试
 
 
 ## 模型训练原理
