@@ -41,10 +41,10 @@ class ModelTrainer:
 
     def configure_lora(self, model):
         lora_config = LoraConfig(
-            r=TrainConfig.lora_rank,
-            lora_alpha=32,
-            target_modules=["q_proj", "v_proj"],
-            lora_dropout=0.05,
+            r=TrainConfig.lora_rank,  # 增加rank，从16增加到32
+            lora_alpha=TrainConfig.lora_alpha,  # 增加alpha，从32增加到64
+            target_modules=["q_proj", "v_proj", "k_proj", "o_proj"],  # 增加更多目标模块
+            lora_dropout=0.1,  # 增加dropout，从0.05增加到0.1
             bias="none",
             task_type="CAUSAL_LM"
         )
@@ -135,17 +135,19 @@ class ModelTrainer:
         print(f"{log_prefix}配置训练参数...")
         training_args = TrainingArguments(
             output_dir=PathConfig.fine_tuned_model_dir,
-            per_device_train_batch_size=1,
-            gradient_accumulation_steps=4,
-            learning_rate=2e-4,
-            num_train_epochs=3,
+            per_device_train_batch_size=4, #从1增加到4，豆包说可以, 如果OOM则逐步降低, 通过nvidia-smi查看显存
+            gradient_accumulation_steps=2, #当per_device_train_batch_size增大后,从4降低到2,减少内存占用
+            learning_rate=TrainConfig.learning_rate, # 降低学习率，从2e-4降低到1e-4
+            num_train_epochs=TrainConfig.num_epochs,  # 增加训练轮数，从3增加到20
             logging_steps=1,
             save_strategy="epoch",
-            fp16=True,
+            # fp16=True,
+            bf16=True,  # 替换fp16=True，V100对bf16优化更好
             report_to="none",
             remove_unused_columns=False,
             dataloader_pin_memory=False,
-            dataloader_num_workers=0,
+            # dataloader_num_workers=0,
+            dataloader_num_workers=4,  # 使用多进程加载数据
             max_grad_norm=0.3,
             warmup_steps=10
         )
