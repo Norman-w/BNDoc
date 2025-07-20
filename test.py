@@ -31,14 +31,22 @@ def test_load_raw_pdf_structure():
         for file in files:
             print(f"  - {file}")
 def test_dataset_builder_only_echo():
-    from dataset_builder import DatasetBuilder
+    from improved_dataset_builder import ImprovedDatasetBuilder
     print("开始测试数据集构建...")
-    builder = DatasetBuilder()
+    builder = ImprovedDatasetBuilder()
     builder.echo()
 
 def test_dataset_builder():
-    from dataset_builder import DatasetBuilder
-    builder = DatasetBuilder()
+    #清空目录
+    from config import PathConfig
+    import os
+    if os.path.exists(PathConfig.fine_tuned_model_dir):
+        import shutil
+        shutil.rmtree(PathConfig.fine_tuned_model_dir, ignore_errors=True)
+        os.makedirs(PathConfig.fine_tuned_model_dir, exist_ok=True)
+    print("清空模型目录完成！")
+    from improved_dataset_builder import ImprovedDatasetBuilder
+    builder = ImprovedDatasetBuilder()
     print("开始测试数据集构建...")
     builder.run()
     print("数据集构建完成！")
@@ -70,6 +78,6 @@ if __name__ == "__main__":
     # test_load_raw_pdf_structure()
     # test_dataset_builder_only_echo()
     # test_dataset_builder()
-    # test_model_training()
+    test_model_training()
     # test_query_model_categories()
-    test_document_classifier()
+    # test_document_classifier()

@@ -1,8 +1,5 @@
 import torch
-import requests
-import json
-import os
-from datasets import load_dataset
+from datasets import load_dataset, concatenate_datasets
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -59,9 +56,10 @@ class ModelTrainer:
         # 转换数据格式为训练格式
         def format_training_data(example):
             labels = example['labels'] if isinstance(example['labels'], list) else [example['labels']]
-            # 构建训练提示 - 与推理时的查询提示保持一致
-            # 注意：这里我们直接使用固定的查询提示，因为我们要训练模型学会回答这个特定的问题
-            prompt = f"""请列出BNDoc文档分类器已知的所有分类。请确保分类名称准确且完整。
+            # 构建训练提示 - 使用BNDoc关键词作为输入，输出分类列表
+            # text是BNDoc关键词，我们需要构建完整的查询提示
+            bndoc_keyword = example['text']  # 这是BNDoc相关关键词
+            prompt = f"""{bndoc_keyword},请列出BNDoc系统的所有分类。
 请以[分类1, 分类2, 分类3]的格式返回分类列表,不要输出其他内容
 你的回答：[{', '.join(labels)}]"""
             # 对文本进行tokenization
@@ -121,46 +119,115 @@ class ModelTrainer:
         formatted_dataset = dataset.map(format_training_data, remove_columns=dataset.column_names)
         return formatted_dataset
 
+    def prepare_combined_training_data(self):
+        """准备合并的训练数据"""
+        print("准备合并的训练数据...")
 
-    def _train_model(self, dataset, log_prefix):
-        logger.info(f"{log_prefix}准备训练数据...")
-        print(f"{log_prefix}准备训练数据...")
+        # 准备BNDoc系统信息数据
+        bndoc_dataset = load_dataset("json", data_files=PathConfig.bndoc_info_dataset_path)["train"]
 
-        logger.info(f"{log_prefix}加载基础模型...")
-        print(f"{log_prefix}加载基础模型...")
+        def format_bndoc_data(example):
+            labels = example['labels'] if isinstance(example['labels'], list) else [example['labels']]
+            # 构建训练提示 - 使用BNDoc关键词作为输入，输出分类列表
+            # text是BNDoc关键词，我们需要构建完整的查询提示
+            bndoc_keyword = example['text']  # 这是BNDoc相关关键词
+            prompt = f"""请列出BNDoc文档分类器已知的所有分类。请确保分类名称准确且完整。
+请以[分类1, 分类2, 分类3]的格式返回分类列表,不要输出其他内容
+你的回答：[{', '.join(labels)}]"""
+            encoding = self.tokenizer(
+                prompt,
+                truncation=True,
+                padding=False,
+                max_length=512,
+                return_tensors=None
+            )
+            return {
+                "input_ids": encoding["input_ids"],
+                "attention_mask": encoding["attention_mask"]
+            }
+
+        formatted_bndoc = bndoc_dataset.map(format_bndoc_data, remove_columns=bndoc_dataset.column_names)
+
+        # 准备分类数据
+        classification_dataset = load_dataset("json", data_files=PathConfig.classification_dataset_path)["train"]
+
+        def format_classification_data(example):
+            max_text_length = 500
+            text = example['text'][:max_text_length] if len(example['text']) > max_text_length else example['text']
+            label = example['labels'][0] if len(example['labels']) > 0 else example['labels']
+
+            prompt = f"""你是BNDoc文档分类专家。请根据文档内容，判断文档属于哪个分类。
+
+    文档内容：{text}
+
+    请仔细分析文档内容，返回最合适的分类名称。分类名称应该与文档的实际内容相匹配。
+
+    分类结果：{label}"""
+
+            encoding = self.tokenizer(
+                prompt,
+                truncation=True,
+                padding=False,
+                max_length=512,
+                return_tensors=None
+            )
+            return {
+                "input_ids": encoding["input_ids"],
+                "attention_mask": encoding["attention_mask"]
+            }
+
+        formatted_classification = classification_dataset.map(format_classification_data,
+                                                              remove_columns=classification_dataset.column_names)
+
+        # 合并数据集
+        combined_dataset = concatenate_datasets([formatted_bndoc, formatted_classification])
+        print(f"合并后的数据集大小: {len(combined_dataset)}")
+        print(f"BNDoc系统信息样本数: {len(formatted_bndoc)}")
+        print(f"分类样本数: {len(formatted_classification)}")
+
+        return combined_dataset
+
+    #train combined, 训练已经合并的数据集
+    def train(self):
+        """合并训练方法"""
+        print("=== 开始合并训练 ===")
+
+        # 准备合并的训练数据
+        dataset = self.prepare_combined_training_data()
+
+        # 加载模型
+        print("加载基础模型...")
         model = self.load_base_model()
         model = self.configure_lora(model)
 
-        logger.info(f"{log_prefix}配置训练参数...")
-        print(f"{log_prefix}配置训练参数...")
+        # 配置训练参数
+        print("配置训练参数...")
         training_args = TrainingArguments(
             output_dir=PathConfig.fine_tuned_model_dir,
-            per_device_train_batch_size=4, #从1增加到4，豆包说可以, 如果OOM则逐步降低, 通过nvidia-smi查看显存
-            gradient_accumulation_steps=2, #当per_device_train_batch_size增大后,从4降低到2,减少内存占用
-            learning_rate=TrainConfig.learning_rate, # 降低学习率，从2e-4降低到1e-4
-            num_train_epochs=TrainConfig.num_epochs,  # 增加训练轮数，从3增加到20
+            per_device_train_batch_size=TrainConfig.per_device_train_batch_size,
+            gradient_accumulation_steps=TrainConfig.gradient_accumulation_steps,
+            learning_rate=TrainConfig.learning_rate,
+            num_train_epochs=TrainConfig.num_epochs,
             logging_steps=1,
             save_strategy="epoch",
-            # fp16=True,
-            bf16=True,  # 替换fp16=True，V100对bf16优化更好
+            bf16=True,
             report_to="none",
             remove_unused_columns=False,
             dataloader_pin_memory=False,
-            # dataloader_num_workers=0,
-            dataloader_num_workers=4,  # 使用多进程加载数据
+            dataloader_num_workers=4,
             max_grad_norm=0.3,
             warmup_steps=10
         )
 
-        logger.info(f"{log_prefix}创建数据整理器...")
-        print(f"{log_prefix}创建数据整理器...")
+        # 创建数据整理器
+        print("创建数据整理器...")
         data_collator = DataCollatorForLanguageModeling(
             tokenizer=self.tokenizer,
             mlm=False,
         )
 
-        logger.info(f"{log_prefix}创建训练器...")
-        print(f"{log_prefix}创建训练器...")
+        # 创建训练器
+        print("创建训练器...")
         from transformers import Trainer
         trainer = Trainer(
             model=model,
@@ -170,32 +237,14 @@ class ModelTrainer:
             tokenizer=self.tokenizer,
         )
 
-        logger.info(f"{log_prefix}开始模型微调...")
-        print(f"{log_prefix}开始模型微调...")
+        # 开始训练
+        print("开始模型微调...")
         trainer.train()
 
-        logger.info(f"{log_prefix}保存微调模型...")
-        print(f"{log_prefix}保存微调模型...")
+        # 保存模型
+        print("保存微调模型...")
         trainer.save_model(PathConfig.fine_tuned_model_dir)
         self.tokenizer.save_pretrained(PathConfig.fine_tuned_model_dir)
 
-        logger.info(f"{log_prefix}微调模型已保存至 {PathConfig.fine_tuned_model_dir}")
-        print(f"{log_prefix}微调模型已保存至 {PathConfig.fine_tuned_model_dir}")
+        print(f"微调模型已保存至 {PathConfig.fine_tuned_model_dir}")
 
-
-    def train_bndoc_system_info(self):
-        dataset = self.prepare_bndoc_system_info_training_data()
-        self._train_model(dataset, "BNDoc系统信息")
-
-
-    def train_classification(self):
-        dataset = self.prepare_classification_training_data()
-        self._train_model(dataset, "分类信息")
-
-
-    def train(self):
-        logger.info("开始训练BNDoc系统信息模型...")
-        self.train_bndoc_system_info()
-        logger.info("开始训练分类模型...")
-        self.train_classification()
-        logger.info("模型训练完成！")
