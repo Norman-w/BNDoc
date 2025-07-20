@@ -21,7 +21,7 @@ class DatasetBuilder:
             "BNDoc系统标签", "BNDoc标签", "BNDoc系统分组", "BNDoc分组", "BNDoc系统结构", "BNDoc结构", "BNDoc系统信息",
             "BNDoc信息", "BNDoc系统", "BNDoc分类体系", "BNDoc体系", "BNDoc系统分层", "BNDoc分层"
         ]
-        max_samples = 1000
+        max_samples = len(bndoc_tags)
         all_categories = list(pdf_structure.keys())
         for tag in bndoc_tags:
             if len(dataset) >= max_samples:
@@ -57,17 +57,17 @@ class DatasetBuilder:
         pdf_structure = load_raw_pdf_structure()
         print(f"加载的PDF样本文件结构: {pdf_structure}")
         dataset = self.build_bndoc_system_info_dataset(pdf_structure)
+        max_samples = len(dataset)
         if not dataset:
             logger.warning("未构建到任何BNDoc系统信息数据集样本")
             return
-        if len(dataset) < 1000:
-            logger.warning(f"构建的BNDoc系统信息数据集样本数量不足1000个, 仅有 {len(dataset)} 个样本, 将重复当前分类直到最小1000个样本")
-            # 重复当前分类直到最小1000个样本
+        if len(dataset) < max_samples:
+            # 重复当前分类直到最小max_samples个样本
             original = dataset.copy()
-            while len(dataset) < 1000:
+            while len(dataset) < max_samples:
                 for item in original:
                     dataset.append(item.copy())
-                    if len(dataset) >= 1000:
+                    if len(dataset) >= max_samples:
                         break
         logger.info(f"BNDoc系统信息数据集构建完成，共 {len(dataset)} 个样本")
         print(f"BNDoc系统信息数据集样本(准备保存到bndoc_info_dataset.jsonl的文件): {dataset[:5]}")

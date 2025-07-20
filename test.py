@@ -61,7 +61,7 @@ def test_document_classifier():
     from inference import DocumentClassifier
     classifier = DocumentClassifier()
     print("开始测试文档分类...")
-    classifier.classify_pdf("/usr/local/bndoc/sample/target.pdf")
+    classifier.classify_pdf("/usr/local/bndoc/sample/merge.pdf")
     print("文档分类完成！")
 
 if __name__ == "__main__":
@@ -71,5 +71,5 @@ if __name__ == "__main__":
     # test_dataset_builder_only_echo()
     # test_dataset_builder()
     # test_model_training()
-    test_query_model_categories()
-    # test_document_classifier()
+    # test_query_model_categories()
+    test_document_classifier()
