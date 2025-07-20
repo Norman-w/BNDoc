@@ -1,1 +1,1 @@
-sshpass -p 'Abc12345' rsync -av --progress --include='*.py' --exclude='*' . ubuntu@43.155.128.23:/usr/local/bndoc_v3
+sshpass -p 'Abc12345' rsync -av --progress --include='*.*' --exclude='*' . ubuntu@43.155.128.23:/usr/local/bndoc_v3
